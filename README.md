@@ -100,6 +100,16 @@ SECRET_KEY = env('SECRET_KEY')  # <-- Updated!
 DEBUG = env('DEBUG')  # <-- Updated!
 ```
 
+The last environment variable to be set is the DATABASE_URL. env.db() will read from the DATABASE_URL variable.
+
+```python
+# settings.py
+DATABASES = {
+    # read os.environ['DATABASE_URL']
+    'default': env.db()  # <-- Updated!
+}
+```
+
 Here we can define our local database, adding it to the .env file:
 
 ```.env
@@ -232,6 +242,7 @@ Before deploying our app, first we need to configure and launch our app to Fly.i
 * <b>Select the organization:</b> you can create a new organization or deploy to your personal account (connect to your Fly account, visible only to you).
 * <b>Choose the region for deployment:</b> Fly.io initially suggests the closest to you, you can choose another region if you prefer.
 * <b>Set up a Postgres database cluster:</b> flyctl offers a single node "Development" config that is designed so we can turn it into a high-availability cluster by adding a second instance in the same region. [Fly Postgres is a regular app you deploy on Fly.io, not a managed database](https://fly.io/docs/postgres/getting-started/what-you-should-know/).
+*[If you use Neon.tech to host your database ]
 
 This is what it looks like when we run fly launch:
 
