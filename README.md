@@ -34,7 +34,7 @@ You will need to install the following packages for your Django app:
 
 ```shell
 pip install django
-pip install boto3
+pip install boto3 # only if you are using S3 buckets for uploads
 ```
 
 The great thing is that Fly.io provides a single-node/high availability PostgreSQL cluster out of the box for us to use. It's also easy to set it up when configuring your deployment. We'll go over how in the next steps.
@@ -104,7 +104,7 @@ Here we can define our local database, adding it to the .env file:
 
 ```.env
 # .env
-SECRET_KEY=3ohiu^m1su%906rf#mws)xt=1u#!xdj+l_ahdh0r#$(k_=e7lb
+SECRET_KEY=justhaveyourcatdanceonyourkeyboard
 DEBUG=True
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/catcollector  # <-- Updated!
 ```
@@ -243,13 +243,15 @@ Scanning source code
 Detected a Django app
 ? Choose an app name (leave blank to generate one): icollectcats
 ? Select Organization: Jan Horak (personal)
-? Choose a region for deployment: Frankfurt, Germany (fra)
+? Choose a region for deployment:Ashburn, Virginia (US) (iad)
+App will use 'iad' region as primary
 Created app icollectcats in organization personal
 Admin URL: https://fly.io/apps/icollectcats
 Hostname: icollectcats.fly.dev
 Set secrets on icollectcats: SECRET_KEY  <-- # SECRET_KEY is set here!
 ? Would you like to set up a Postgresql database now? Yes
 ? Select configuration: Development - Single node, 1x shared CPU, 256MB RAM, 1GB disk
+? Scale single node pg to zero after one hour? Yes
 Creating postgres cluster in organization personal
 Creating app...
 Setting secrets on app icollectcats-db...
@@ -270,7 +272,7 @@ Postgres cluster icollectcats-db created
 Save your credentials in a secure place -- you will not be able to see them again!
 
 Connect to postgres
-Any app within the Kátia Nakamura organization can connect to this Postgres using the above connection string
+Any app within the jannyb organization can connect to this Postgres using the above connection string
 
 Now that you have set up Postgres, here is what you need to understand: https://fly.io/docs/postgres/getting-started/what-you-should-know/
 Checking for existing attachments
