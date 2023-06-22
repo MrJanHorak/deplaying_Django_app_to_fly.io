@@ -208,26 +208,187 @@ If not installed yet, follow these [instructions](https://fly.io/docs/hands-on/i
 
 ## Launching our App
 
-Fly.io allows us to deploy our Django app as long as it's packaged in a Docker image. However, we don't need to define our <span style="color:lightblue">Dockerfile</span>. manually. Fly.io detects our Django app and automatically generates all the necessary files for our deployment. Those are:
+Fly.io allows us to deploy our Django app as long as it's packaged in a Docker image. However, we don't need to define our <span style="color:lightblue">Dockerfile</span> manually. Fly.io detects our Django app and automatically generates all the necessary files for our deployment. Those are:
 
-Dockerfile contain commands to build our image.
-.dockerignore list of files or directories Docker will ignore during the build process.
-fly.toml configuration for deployment on Fly.io.
+* <span style="color:lightblue">Dockerfile</span> contain commands to build our image.
+* <span style="color:lightblue">.dockerignore</span> list of files or directories Docker will ignore during the build process.
+* <span style="color:lightblue">fly.toml</span> configuration for deployment on Fly.io.
 All of those files are templates for a simple Django apps and can be modified according to your needs.
 
 Before deploying our app, first we need to configure and launch our app to Fly.io by using the flyctl command fly launch. During the process, we will:
 
-Choose an app name: this will be your dedicated fly.dev subdomain.
-Select the organization: you can create a new organization or deploy to your personal account (connect to your Fly account, visible only to you).
-Choose the region for deployment: Fly.io initially suggests the closest to you, you can choose another region if you prefer.
-Set up a Postgres database cluster: flyctl offers a single node "Development" config that is designed so we can turn it into a high-availability cluster by adding a second instance in the same region. Fly Postgres is a regular app you deploy on Fly.io, not a managed database.
+* <b>Choose an app name:</b> this will be your dedicated fly.dev subdomain.
+* <b>Select the organization:</b> you can create a new organization or deploy to your personal account (connect to your Fly account, visible only to you).
+* <b>Choose the region for deployment:</b> Fly.io initially suggests the closest to you, you can choose another region if you prefer.
+* <b>Set up a Postgres database cluster:</b> flyctl offers a single node "Development" config that is designed so we can turn it into a high-availability cluster by adding a second instance in the same region. [Fly Postgres is a regular app you deploy on Fly.io, not a managed database](https://fly.io/docs/postgres/getting-started/what-you-should-know/).
+
 This is what it looks like when we run fly launch:
 
+```shell
+fly launch
+
+Creating app in ../flyio/icollectcats
+Scanning source code
+Detected a Django app
+? Choose an app name (leave blank to generate one): icollectcats
+? Select Organization: Jan Horak (personal)
+? Choose a region for deployment: Frankfurt, Germany (fra)
+Created app icollectcats in organization personal
+Admin URL: https://fly.io/apps/icollectcats
+Hostname: icollectcats.fly.dev
+Set secrets on icollectcats: SECRET_KEY  <-- # SECRET_KEY is set here!
+? Would you like to set up a Postgresql database now? Yes
+? Select configuration: Development - Single node, 1x shared CPU, 256MB RAM, 1GB disk
+Creating postgres cluster in organization personal
+Creating app...
+Setting secrets on app icollectcats-db...
+Provisioning 1 of 1 machines with image flyio/postgres:14.6
+Waiting for machine to start...
+Machine 32874445c04218 is created
+==> Monitoring health checks
+  Waiting for 32874445c04218 to become healthy (started, 3/3)
+
+Postgres cluster icollectcats-db created
+  Username:    postgres
+  Password:    <your-internal-postgres-password>
+  Hostname:    icollectcats-db.internal
+  Proxy port:  5432
+  Postgres port:  5433
+  Connection string: postgres://postgres:<your-internal-postgres-password>@icollectcats-db.internal:5432
+
+Save your credentials in a secure place -- you will not be able to see them again!
+
+Connect to postgres
+Any app within the Kátia Nakamura organization can connect to this Postgres using the above connection string
+
+Now that you have set up Postgres, here is what you need to understand: https://fly.io/docs/postgres/getting-started/what-you-should-know/
+Checking for existing attachments
+Registering attachment
+Creating database
+Creating user
+
+Postgres cluster icollectcats-db is now attached to icollectcats
+The following secret was added to icollectcats:  <-- # DATABASE_URL is set here!
+  DATABASE_URL=postgres://katias_blog:<your-postgres-password>@top2.nearest.of.icollectcats-db.internal:5432/katias_blog?sslmode=disable
+Postgres cluster icollectcats-db is now attached to icollectcats
+? Would you like to set up an Upstash Redis database now? No
+Creating database migrations
+Wrote config file fly.toml
+
+Your Django app is ready to deploy!
+
+For detailed documentation, see https://fly.dev/docs/django/
+```
+
+
+
+During the process, the SECRET_KEY and DATABASE_URL will be automatically set to be used on your production deployment. Those are the only ones we need at the moment but if you have any other secrets, [check here how to set them](https://fly.io/docs/reference/secrets/#setting-secrets). You can also list all your application secret names:
+
+```shell
+fly secrets list
+
+NAME            DIGEST                  CREATED AT
+DATABASE_URL    cc999c17fa021988        2023-02-07T19:48:55Z
+SECRET_KEY      e0a6dbbd078004f7        2023-02-07T19:47:33Z
+```
+
+fly launch sets up a running app, creating the necessary files: Dockerfile, .dockerignore and fly.toml.
+
+Don't forget to replace demo.wsgi in your Dockerfile with your Django project's name:
+
+```python
+# Dockefile
+...
+# replace demo.wsgi with <project_name>.wsgi
+CMD ["gunicorn", "--bind", ":8000", "--workers", "2", "website.wsgi"]  # <-- Updated!
+```
+
+For security reasons, we'll add .env to our .dockerignore file - so Docker doesn't include our secrets during the build process.
+
+```.env
+# .dockerignore
+fly.toml
+.git/
+*.sqlite3
+.env  # <-- Updated!
+```
+This means the environment variables (i.e. SECRET_KEY) stored in the .env file won't be available at build time, neither the secrets automatically set by Fly.io on your application during the fly launch process.
+
+Set a default SECRET_KEY using the get_random_secret_key function provided by Django that will be used at build time. At runtime, we'll use the SECRET_KEY set by Fly.io, i.e. the default value only applies to the build process.
+
+```python
+# settings.py
+from django.core.management.utils import get_random_secret_key
+...
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = env.str('SECRET_KEY', default=get_random_secret_key())  # <-- Updated!
+```
+
+This keeps our environment variables safe and makes sure they will be set for the different environments.
+
+Now that we have set our app name, we can update our settings.py with the dedicated subdomain we chose (or that was generated for us):
+
+```python
+# settings.py
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'icollectcats.fly.dev']  # <-- Updated!
+
+CSRF_TRUSTED_ORIGINS = ['https://icollectcats.fly.dev']  # <-- Updated!
+```
+Finally, in the [[statics]] section on fly.toml file, we define the guest_path, which is the path inside our container where the files will be served directly to the users, bypassing our web server. In the settings.py we defined the STATIC_ROOT:
+
+```python
+# settings.py
+STATIC_ROOT = BASE_DIR / 'staticfiles'  # <-- Updated!
+```
+The Dockerfile generated by fly launch defines our WORKDIR as /code. That's where our static files will be collected: /code/staticfiles. Let's go ahead and update our fly.toml to serve those files directly:
+
+```shell
+# fly.toml
+[[statics]]
+  guest_path = "/code/staticfiles"  # <-- Updated!
+  url_prefix = "/static"
+```
+
+If your app contains static files such as images, CSS or Javascript files, we need to collect all the static files into a single location and make them accessible to be served in production. 
+
+To gather all static files run the following command in your terminal:
+
+```shell
+python manage.py collectstatic
+```
+
+This process also needs to happen at build time (so they are persisted when building our image) by running the collectstatic command in the Dockerfile:
+
+```python
+# Dockerfile
+...
+RUN python manage.py collectstatic --noinput
+```
+
+# Deploying our App
+
+Great! All ready and it's finally time to deploy our app:
+
+```shell
+fly deploy
+...
+ 1 desired, 1 placed, 1 healthy, 0 unhealthy [health checks: 1 total, 1 passing]
+--> v0 deployed successfully
+```
+
+Our app is now up and running! ⚙️ Try:
+
+```shell
+fly open
+```
+
+YAY! 🎉 We just deployed our Django app to production! How great is that?
 
 
 pip install psycopg2-binary
 
 python manage.py collectstatic
+
 
 
 
