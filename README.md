@@ -1,15 +1,17 @@
-# Deploying a Django app to [fly.io](fly.io)
+# Deploying a Django app to [fly.io](https://fly.io)
 
 ## Overview
 
 This post has two main sections:
 
 1. <b>Setting up</b>: steps on how to make your local Django app ready for going to production on any hosting platform.
-2. <b>Deploying to [fly.io](fly.io)</b>: deploying your production-ready Django app to [fly.io](fly.io).
+2. <b>Deploying to [fly.io](https://fly.io)</b>: deploying your production-ready Django app to [fly.io](https://fly.io).
 
 ## Setting Up
 
-You will need to create a virtual environment.
+You will need to create a virtual environment. Since you have not had a dedicated environment for this app, you will also need to install all the packages you used in creating your app into this environment. 
+
+To create a dedicated Python development environment run the following command.
 
 ```shell
 # Linux/Unix/macOS
@@ -26,6 +28,15 @@ $ .venv\Scripts\activate
 (.venv) $
 ```
 
+Once this environment is activated you will need to install all packages you used to create your app (best practice is to always create a new active environment for each new project at the beginning of your project):
+
+You will need to install the following packages for your Django app:
+
+```shell
+pip install django
+pip install boto3
+```
+
 The great thing is that Fly.io provides a single-node/high availability PostgreSQL cluster out of the box for us to use. It's also easy to set it up when configuring your deployment. We'll go over how in the next steps.
 
 You can also use [neon.tech](neon.tech) to host your PostgreSQL database for free. 
@@ -34,9 +45,9 @@ The config updates required to change our database are explained in the next ste
 
 ## Environment Variables
 
-First of all, we want to store the configuration separate from our code and load them at runtime. This allow us to keep one settings.py file and still have multiple environments (i.e. local/staging/production).
+First of all, we want to store the configuration separate from our code and load them at runtime. This allows us to keep one settings.py file and still have multiple environments (i.e. local/staging/production).
 
-One popular options is the usage of the environs package. Another option is the python-decouple package, which was originally designed for Django, but it's recommended to be used with dj-database-url to configure the database. For this guide we'll use django-environ to configure our Django application, which allows us to use the 12factor approach.
+One popular options is the usage of the environs package. We'll use django-environ to configure our Django application.
 
 Make sure your Python virtual environment is activated and let's install the django-environ:
 
@@ -57,7 +68,7 @@ env = environ.Env(  # <-- Updated!
 )
 ```
 
-django-environ (and also the other mentioned packages) can take environment variables from the .env file. Go ahead and create this file in your root directory and also don't forget to add it to your .gitignore in case you are using Git for version control (you should!). We don't want those variables to be public, this will be used for the local environment and be set separately in our production environment.
+django-environ can take environment variables from the .env file. Go ahead and create this file in your root directory and also don't forget to add it to your .gitignore in case you are using Git for version control (you should!). We don't want those variables to be public, this will be used for the local environment and be set separately in our production environment.
 
 Make sure you are taking the environment variables from your .env file:
 
@@ -110,7 +121,7 @@ python -m pip install psycopg2-binary
 
 ## Gunicorn
 
-When starting a Django project (with startproject management command), we get a minimal WSGI configuration set up out of the box. However, this default webserver is not recommended for production. Gunicorn (Green Unicorn) is a Python WSGI HTTP Server for Unix and one of the easiest to start with. It can be installed using pip:
+Gunicorn (Green Unicorn) is a Python WSGI HTTP Server recommended for Unix and one of the easiest to start with. It can be installed using pip:
 
 ```shell
 python -m pip install gunicorn==20.1.0
@@ -171,13 +182,13 @@ CSRF_TRUSTED_ORIGINS = ['https://*.fly.dev']  # <-- Updated!
 ```
 ## Installed packages
 
-Make sure you have all necessary installed packages tracked and listed in your requirements.txt by running:
+Make sure you have all necessary installed packages are tracked and listed in your requirements.txt by running:
 
 ```shell
 pip freeze > requirements.txt
 ```
 
-This command generates the requirements.txt file if it doesn't exist. (It is the Django equivalent to the package.json in NodeJS)
+This command generates the requirements.txt file if it doesn't exist. (It is the Django equivalent to the package.json in NodeJS) Yours will vary depending on the installed packages.
 
 ```python
 # requirements.txt
@@ -210,7 +221,7 @@ If not installed yet, follow these [instructions](https://fly.io/docs/hands-on/i
 
 Fly.io allows us to deploy our Django app as long as it's packaged in a Docker image. However, we don't need to define our <span style="color:lightblue">Dockerfile</span> manually. Fly.io detects our Django app and automatically generates all the necessary files for our deployment. Those are:
 
-* <span style="color:lightblue">Dockerfile</span> contain commands to build our image.
+* <span style="color:lightblue">Dockerfile</span> contains commands to build our image.
 * <span style="color:lightblue">.dockerignore</span> list of files or directories Docker will ignore during the build process.
 * <span style="color:lightblue">fly.toml</span> configuration for deployment on Fly.io.
 All of those files are templates for a simple Django apps and can be modified according to your needs.
@@ -269,7 +280,7 @@ Creating user
 
 Postgres cluster icollectcats-db is now attached to icollectcats
 The following secret was added to icollectcats:  <-- # DATABASE_URL is set here!
-  DATABASE_URL=postgres://katias_blog:<your-postgres-password>@top2.nearest.of.icollectcats-db.internal:5432/katias_blog?sslmode=disable
+  DATABASE_URL=postgres://icollectcats:<your-postgres-password>@top2.nearest.of.icollectcats-db.internal:5432/icollectcats?sslmode=disable
 Postgres cluster icollectcats-db is now attached to icollectcats
 ? Would you like to set up an Upstash Redis database now? No
 Creating database migrations
@@ -280,7 +291,7 @@ Your Django app is ready to deploy!
 For detailed documentation, see https://fly.dev/docs/django/
 ```
 
-
+Scroll up and copy and save the database information to add to your local .env if you want to connect to the same database on your local machine as you continue to work on your app.
 
 During the process, the SECRET_KEY and DATABASE_URL will be automatically set to be used on your production deployment. Those are the only ones we need at the moment but if you have any other secrets, [check here how to set them](https://fly.io/docs/reference/secrets/#setting-secrets). You can also list all your application secret names:
 
@@ -332,7 +343,7 @@ Now that we have set our app name, we can update our settings.py with the dedica
 # settings.py
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', 'icollectcats.fly.dev']  # <-- Updated!
 
-CSRF_TRUSTED_ORIGINS = ['https://icollectcats.fly.dev']  # <-- Updated!
+CSRF_TRUSTED_ORIGINS = ['https://icollectcats.fly.dev']  # <-- Add this line!
 ```
 Finally, in the [[statics]] section on fly.toml file, we define the guest_path, which is the path inside our container where the files will be served directly to the users, bypassing our web server. In the settings.py we defined the STATIC_ROOT:
 
@@ -349,21 +360,6 @@ The Dockerfile generated by fly launch defines our WORKDIR as /code. That's wher
   url_prefix = "/static"
 ```
 
-If your app contains static files such as images, CSS or Javascript files, we need to collect all the static files into a single location and make them accessible to be served in production. 
-
-To gather all static files run the following command in your terminal:
-
-```shell
-python manage.py collectstatic
-```
-
-This process also needs to happen at build time (so they are persisted when building our image) by running the collectstatic command in the Dockerfile:
-
-```python
-# Dockerfile
-...
-RUN python manage.py collectstatic --noinput
-```
 
 # Deploying our App
 
@@ -383,12 +379,6 @@ fly open
 ```
 
 YAY! 🎉 We just deployed our Django app to production! How great is that?
-
-
-pip install psycopg2-binary
-
-python manage.py collectstatic
-
 
 
 
